@@ -1,69 +1,74 @@
+// messed up version
+// Few things to remember
+// blocks are made with a sub class of UILabel that holds their number
+// there is definitely something going on with the randomize method
+
+
 import UIKit
 
 class GameViewController: UIViewController
 {
-
-    // MARK: - Vars
+    // MARK: - UI Outlets and variables for the game view
     var gameViewBg: UIView!
     var gameTimelabel: UILabel!
     var gameResetButton: UIButton!
-       var gameMode : Int = 4;
-
-    var gameViewWidth: Int = 0;
-    var blocksArr: NSMutableArray = [];
-    var centersArr: NSMutableArray = [];
-
-    var gameTimer: Timer = Timer();
-    var curTime: Int = 0;
-    
-    var compareState: Bool = false;
-    var indOfFirstButton: Int = 0;
-    var indOfSecondButton: Int = 0;
-    var tapIsAllowd: Bool = true;
-    
-    var matchedSoFar: Int = 0;
+    var gameViewWidth: Int = 0
     
     
-    override func viewDidAppear(_ animated: Bool)
-    {
+    // MARK: - Game blocks, coordinates and mode
+    var gameMode : Int!
+    var blocksArr: NSMutableArray!
+    var centersArr: NSMutableArray = []
+    
+    
+    // MARK: - Game Timer
+    var gameTimer: Timer = Timer()
+    var curTime: Int = 0
+    
+    // MARK: - Game comparison stuff
+    var compareState: Bool = false
+    var firstLabel: MyLabel!
+    var secondLabel: MyLabel!
+    var tapIsAllowd: Bool = true
+    var matchedSoFar: Int = 0
+    
+    
+    // MARK: - Game initial settings
+    override func viewDidAppear(_ animated: Bool)    {
         super.viewDidAppear(true);
         
         gameViewBg.layoutIfNeeded();
         gameViewWidth = Int(gameViewBg.bounds.size.width);
-
+        
         self.resetAction((Any).self);
     }
     
-    override func viewDidLoad()
-    {
+    override func viewDidLoad()    {
         super.viewDidLoad()
-        
-        
+        self.makeOutlets()
+    }
+    
+    
+    
+    func makeOutlets ()    {
         let width = self.view.frame.size.width-40
         let y = 20 + (self.navigationController?.navigationBar.frame.size.height)! + 20
         
-        gameViewBg = UIView()
         gameViewBg.frame = CGRect(x: 20,
                                   y: y,
                                   width: width,
                                   height: width)
         gameViewBg.backgroundColor = UIColor.lightGray
         self.view.addSubview(gameViewBg)
-
         
-        
-//        gameTimelabel.textAlignment = NSTextAlignment.center
+        gameTimelabel.textAlignment = NSTextAlignment.center
         gameTimelabel = UILabel(frame: CGRect(x: 20,
                                               y: y + width + 20,
                                               width: width/2-10,
                                               height: 40))
         
-        gameTimelabel.textAlignment = NSTextAlignment.center
-
         gameTimelabel.backgroundColor = UIColor.darkGray
         self.view.addSubview(gameTimelabel)
-        
-        
         
         gameResetButton = UIButton()
         gameResetButton.frame = CGRect(x: 20+10+width/2,
@@ -73,32 +78,30 @@ class GameViewController: UIViewController
         gameResetButton.backgroundColor = UIColor.darkGray
         gameResetButton.setTitle("Reset", for: UIControlState.normal)
         gameResetButton.addTarget(self,
-                                  action: #selector(resetAction(_:)),
+                                  action: #selector(resetAction()),
                                   for: UIControlEvents.touchUpInside)
         
         self.view.addSubview(gameResetButton)
-        
-        
     }
     
-
+    // MARK: - Making the blocks for the game based on the game mode
     func blockMakerAction()
     {
-        let blockWidth: Int = gameViewWidth / gameMode;
+        var blockWidth: Int = gameViewWidth / gameMode;
         var xCen: Int = blockWidth / 2;
         var yCen: Int = blockWidth / 2;
         var counter: Int = 0;
         
-        for _ in 0..<gameMode
+        for v in 0..<gameMode
         {
-            for _ in 0..<gameMode
+            for h in 0..<gameMode
             {
-                if counter == 8
+                if counter == gameMode*gameMode/2
                 {
                     counter = 0;
                 }
                 
-                let block : UILabel = UILabel();
+                var block : MyLabel = MyLabel();
                 let blockFrame : CGRect = CGRect (x: 0,
                                                   y: 0,
                                                   width: blockWidth-(40/gameMode),
@@ -114,16 +117,12 @@ class GameViewController: UIViewController
                 
                 block.isUserInteractionEnabled = true;
                 
+                block.numberTag = counter
                 blocksArr.add(block);
-                
                 centersArr.add( newCenter);
-                
                 gameViewBg.addSubview(block);
-                
                 counter = counter + 1;
-                
                 xCen = xCen + blockWidth;
-                
             }
             
             yCen = yCen + blockWidth;
@@ -131,37 +130,47 @@ class GameViewController: UIViewController
         }
     }
     
+    // MARK: Block Randomizer
+    // this method ranomizes the location of different blocks
     func randomizeAction()
     {
+        // We do this by first copying the centers for different blocks into a new array
         let temp: NSMutableArray = centersArr.mutableCopy() as! NSMutableArray;
+        
+        // we'd then iterate through the array of blocks and assign random centers to them
         
         for block in blocksArr
         {
             let randIndex: Int = Int( arc4random()) % temp.count;
             let randCen: CGPoint = temp[randIndex] as! CGPoint;
-            (block as! UILabel).center = randCen;
-            temp.removeObject(at: randIndex);
+            (block as! MyLabel).center = randCen;
         }
     }
     
-    @IBAction func resetAction(_ sender: Any)
+    // MARK: Game Reset method
+    func resetAction()
     {
+        // we begin by removing everything from the view
         for anyView in gameViewBg.subviews
         {
             anyView.removeFromSuperview();
         }
         
+        // and empty the arrays
         blocksArr = [];
         centersArr = [];
         
+        // then we remake the blocks and re-randomize them
         self.blockMakerAction();
         self.randomizeAction();
         
+        
         for anyBlock in blocksArr
         {
-            (anyBlock as! UILabel).text = "?"
+            (anyBlock as! MyLabel).text = "?"
         }
         
+        // we reset the timer values as well
         matchedSoFar = 0;
         curTime = 0;
         gameTimer.invalidate();
@@ -172,8 +181,14 @@ class GameViewController: UIViewController
                                          repeats: true)
     }
     
+    // MARK: - Timer Action
     @objc func timerAction()
     {
+        // NEXT TWO LINES ARE FOR MEMORY / CPU TESTING
+        // self.blockMakerAction()
+        // self.randomizeAction()
+        
+        
         curTime += 1;
         let timeMins: Int = abs(curTime / 60);
         let timeSecs: Int = curTime % 60;
@@ -183,41 +198,33 @@ class GameViewController: UIViewController
         gameTimelabel.text = timeStr as String;
     }
     
+    // MARK: - UI Responder Event
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?)
     {
+        [super .touchesEnded(touches, with: event)]
+        
         let myTouch = touches.first;
         
         if blocksArr.contains(myTouch?.view as Any) && tapIsAllowd
         {
-            let thisButton: UILabel = myTouch!.view as! UILabel;
+            let thisLabel: MyLabel = myTouch!.view as! MyLabel;
             
-            var indOfButton : Int =  blocksArr.index(of: thisButton);
-            
-            if compareState
-            {
-                indOfSecondButton = indOfButton;
-            }
-            else
-            {
-                indOfFirstButton = indOfButton;
+            if compareState {
+                firstLabel = thisLabel
+            } else {
+                secondLabel = thisLabel
             }
             
-            if indOfButton >= gameMode*gameMode/2
-            {
-                indOfButton = indOfButton - gameMode*gameMode/2;
-            }
-            
-            UIView.transition(with: thisButton,
+            UIView.transition(with: thisLabel,
                               duration: 0.75,
                               options:UIViewAnimationOptions.transitionFlipFromLeft,
-                              animations:
-                {
-                    self.tapIsAllowd = false;
-                    thisButton.text = String( indOfButton)
-            },
-                              completion:
+                              animations: {
+                                self.tapIsAllowd = false;
+                                thisLabel.text =  thisLabel.numberTag as! String
+                                
+                                thisLabel.backgroundColor = UIColor.purple
+            }, completion:
                 { (true) in
-                    
                     self.tapIsAllowd = true;
                     if self.compareState
                     {
@@ -228,29 +235,16 @@ class GameViewController: UIViewController
                     {
                         self.compareState = true;
                     }
-            }
-            );
+            })
         }
     }
     
-    
-    
+    // MARK: Comparing two blocks happens in here
     func compareAction()
     {
-        let firstButton:UILabel = blocksArr[indOfFirstButton] as! UILabel;
-        let secondButton:UILabel = blocksArr[indOfSecondButton] as! UILabel;
-        
-        
-        let dist: Int = abs(indOfFirstButton-indOfSecondButton);
-        
-        if dist == gameMode*gameMode/2
+        if firstLabel.numberTag == secondLabel.numberTag
         {
-            UIView.beginAnimations(nil, context: nil);
-            UIView.setAnimationDuration(0.5);
-            firstButton.alpha = 0.0;
-            secondButton.alpha = 0.0;
-            UIView.commitAnimations();
-            
+            self.hideThese(anyInp: [firstLabel, secondLabel])
             
             matchedSoFar = matchedSoFar + 1;
             
@@ -266,28 +260,52 @@ class GameViewController: UIViewController
                               options: UIViewAnimationOptions.transitionCrossDissolve,
                               animations:
                 {
-                    firstButton.text = "?"
-                    secondButton.text = "?"
+                    self.firstLabel.backgroundColor = UIColor.darkGray
+                    self.secondLabel.backgroundColor = UIColor.darkGray
+                    firstLabel.text = "?"
+                    secondLabel.text = "?"
             },
                               completion: nil);
+        }
+    }
+    
+    func hideThese(anyInp:Array<Any>) {
+        
+        for anyObj in anyInp
+        {
+            var thisBlock = anyObj as! MyLabel
+            
+            UIView.transition(with: self.view,
+                              duration: 0.5,
+                              options: UIViewAnimationOptions.transitionCrossDissolve,
+                              animations:{
+                                thisBlock.text = "😀"
+                                thisBlock.backgroundColor = UIColor.green
+            }, completion: nil);
         }
     }
 }
 
 
-class TableViewCtrl: UITableViewController {
-    
-    var objects = [Any]()
 
+class MyLabel : UILabel
+{
+    var numberTag: Int = 0
+}
+
+
+
+
+
+
+class TableViewCtrl: UIViewController {
+    
+    var objects :[Any] = [4,6,8,10,12]
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        objects.append(4)
-        objects.append(6)
-        objects.append(8)
-        objects.append(10)
-        objects.append(12)
+        self.tableView.delegate = GameViewController
     }
     
     
@@ -296,15 +314,15 @@ class TableViewCtrl: UITableViewController {
             
             let ctrl = segue.destination as! GameViewController
             let indexPath = tableView.indexPathForSelectedRow
-
-                
+            
             ctrl.gameMode = objects[(indexPath?.row)!] as! Int
-            }
+            
+            self.performSegue(withIdentifier: "playGameSegue", sender: sender)
         }
+    }
     
     
-    // MARK: - Table View
-
+    
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return objects.count
     }
@@ -322,6 +340,6 @@ class TableViewCtrl: UITableViewController {
     {
         self.performSegue(withIdentifier: "playGameSegue", sender: indexPath)
     }
-    
-    
 }
+
+
